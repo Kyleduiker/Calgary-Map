@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calgary Communities Map - Duiker Properties</title>
+    <meta name="description" content="Explore Calgary communities with our interactive map. Click any community to view properties and listings in that area.">
+    <meta name="keywords" content="Calgary real estate, Calgary communities, Mahogany, Seton, Auburn Bay, Cranston, Chestermere">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Calgary Communities Map - Duiker Properties">
+    <meta property="og:description" content="Explore Calgary communities with our interactive map">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .map-container {
+            width: 100%;
+            border: 3px solid #e2e8f0;
+            border-radius: 15px;
+            overflow: hidden;
+            background: #f7fafc;
+            position: relative;
+        }
+        
+        #map {
+            width: 100%;
+            height: auto;
+            display: block;
+            cursor: pointer;
+        }
+        
+        /* Make community areas interactive */
+        #map polygon,
+        #map path {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        #map polygon:hover,
+        #map path:hover {
+            filter: brightness(1.3);
+            stroke: #3182ce;
+            stroke-width: 3;
+        }
+        
+        #map text {
+            pointer-events: none;
+            user-select: none;
+        }
+        
+        .info-panel {
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            color: white;
+            text-align: center;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .info-panel h2 {
+            margin-bottom: 10px;
+            font-size: 1.8em;
+        }
+        
+        .info-panel p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .info-panel a {
+            color: white;
+            text-decoration: underline;
+            font-weight: bold;
+            font-size: 1.2em;
+            transition: opacity 0.2s;
+        }
+        
+        .info-panel a:hover {
+            opacity: 0.8;
+        }
+        
+        .community-info {
+            display: none;
+        }
+        
+        .community-info.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .instructions {
+            background: #edf2f7;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #2d3748;
+        }
+        
+        .instructions strong {
+            color: #667eea;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+            white-space: nowrap;
+        }
+        
+        .zoom-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 100;
+        }
+        
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .zoom-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+            transform: scale(1.1);
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+        
+        .footer a {
+            color: white;
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .subtitle {
+                font-size: 1em;
+            }
+            
+            .zoom-controls {
+                top: 10px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏘️ Calgary Communities Map</h1>
+        <p class="subtitle">Interactive map of Calgary neighbourhoods</p>
+        
+        <div class="instructions">
+            <strong>How to use:</strong> Hover over or click on any community to see its information and view properties.
+        </div>
+        
+        <div class="map-container">
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">+</button>
+                <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">−</button>
+                <button class="zoom-btn" onclick="resetZoom()" title="Reset">⟲</button>
+            </div>
+            <div id="mapWrapper"></div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="community-info active" id="defaultInfo">
+                <h2>Welcome to Calgary!</h2>
+                <p>Select a community on the map to view details and properties</p>
+            </div>
+            <div class="community-info" id="communityInfo">
+                <h2 id="communityName"></h2>
+                <p id="communityDetails"></p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>
+            Powered by <a href="https://duikerproperties.com" target="_blank">Duiker Properties</a> | 
+            Royal LePage Solutions | Calgary, AB
+        </p>
+    </div>
+    
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // Configuration: Map community names to their destination URLs
+        const communityURLs = {
+            // Southeast Communities (Your specialties)
+            'Mahogany': 'https://duikerproperties.com/communities/mahogany',
+            'Seton': 'https://duikerproperties.com/communities/seton',
+            'Auburn Bay': 'https://duikerproperties.com/communities/auburn-bay',
+            'Cranston': 'https://duikerproperties.com/communities/cranston',
+            'Chestermere': 'https://duikerproperties.com/communities/chestermere',
+            
+            // Other Southeast Communities
+            'McKenzie Lake': 'https://duikerproperties.com/communities/mckenzie-lake',
+            'McKenzie Towne': 'https://duikerproperties.com/communities/mckenzie-towne',
+            'Copperfield': 'https://duikerproperties.com/communities/copperfield',
+            'New Brighton': 'https://duikerproperties.com/communities/new-brighton',
+            'Quarry Park': 'https://duikerproperties.com/communities/quarry-park',
+            
+            // Add more communities as needed
+            // Format: 'Community Name': 'URL'
+            
+            // Default URL for communities not explicitly mapped
+            'default': 'https://duikerproperties.com/communities'
+        };
+        
+        let currentZoom = 1;
+        // GitHub Pages will serve this from the same directory
+        const svgPath = 'CITY_OF_CALGARY_MAP_2025.svg';
+        
+        // Load and inject the SVG
+        fetch(svgPath)
+            .then(response => response.text())
+            .then(svgContent => {
+                document.getElementById('mapWrapper').innerHTML = svgContent;
+                initializeMap();
+            })
+            .catch(error => {
+                console.error('Error loading SVG:', error);
+                document.getElementById('mapWrapper').innerHTML = 
+                    '<p style="padding: 40px; text-align: center; color: #e53e3e;">Error loading map. Please refresh the page.</p>';
+            });
+        
+        function initializeMap() {
+            const svg = document.querySelector('#mapWrapper svg');
+            if (!svg) return;
+            
+            svg.id = 'map';
+            
+            // Get all polygons and paths (community boundaries)
+            const shapes = svg.querySelectorAll('polygon, path');
+            const texts = Array.from(svg.querySelectorAll('text'));
+            
+            // Create a mapping of shapes to their nearest text labels
+            const shapeTextMap = new Map();
+            
+            shapes.forEach(shape => {
+                // Skip shapes that are too small (likely decorative)
+                const bbox = shape.getBBox();
+                if (bbox.width < 10 || bbox.height < 10) return;
+                
+                // Find the nearest text element
+                const shapeCenterX = bbox.x + bbox.width / 2;
+                const shapeCenterY = bbox.y + bbox.height / 2;
+                
+                let nearestText = null;
+                let minDistance = Infinity;
+                
+                texts.forEach(text => {
+                    const textBBox = text.getBBox();
+                    const textX = textBBox.x + textBBox.width / 2;
+                    const textY = textBBox.y + textBBox.height / 2;
+                    
+                    const distance = Math.sqrt(
+                        Math.pow(shapeCenterX - textX, 2) + 
+                        Math.pow(shapeCenterY - textY, 2)
+                    );
+                    
+                    // Only consider texts within a reasonable distance
+                    if (distance < 100 && distance < minDistance) {
+                        minDistance = distance;
+                        nearestText = text;
+                    }
+                });
+                
+                if (nearestText) {
+                    shapeTextMap.set(shape, nearestText.textContent.trim());
+                }
+            });
+            
+            // Add event listeners to shapes
+            shapes.forEach(shape => {
+                const communityName = shapeTextMap.get(shape);
+                if (!communityName) return;
+                
+                // Skip if it's just a number (postal codes, etc)
+                if (/^\d+$/.test(communityName)) return;
+                
+                // Hover effect
+                shape.addEventListener('mouseenter', (e) => {
+                    showTooltip(e, communityName);
+                    shape.style.filter = 'brightness(1.3)';
+                    shape.style.stroke = '#3182ce';
+                    shape.style.strokeWidth = '3';
+                });
+                
+                shape.addEventListener('mousemove', (e) => {
+                    updateTooltip(e);
+                });
+                
+                shape.addEventListener('mouseleave', () => {
+                    hideTooltip();
+                    shape.style.filter = '';
+                    shape.style.stroke = '';
+                    shape.style.strokeWidth = '';
+                });
+                
+                // Click event
+                shape.addEventListener('click', () => {
+                    handleCommunityClick(communityName);
+                });
+            });
+            
+            console.log(`Initialized ${shapeTextMap.size} clickable communities`);
+        }
+        
+        function handleCommunityClick(communityName) {
+            // Update info panel
+            document.getElementById('defaultInfo').classList.remove('active');
+            document.getElementById('communityInfo').classList.add('active');
+            document.getElementById('communityName').textContent = communityName;
+            
+            // Get URL for this community
+            const url = communityURLs[communityName] || communityURLs['default'];
+            
+            // Add community name as query parameter for tracking
+            const trackingUrl = url.includes('?') 
+                ? `${url}&community=${encodeURIComponent(communityName)}`
+                : `${url}?community=${encodeURIComponent(communityName)}`;
+            
+            document.getElementById('communityDetails').innerHTML = 
+                `Click to view ${communityName} listings and information<br><br>` +
+                `<a href="${trackingUrl}" target="_blank">View ${communityName} Properties →</a>`;
+            
+            // Google Analytics tracking (if you have GA set up)
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'community_click', {
+                    'community_name': communityName,
+                    'destination_url': url
+                });
+            }
+        }
+        
+        function showTooltip(event, text) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.textContent = text;
+            tooltip.style.display = 'block';
+            updateTooltip(event);
+        }
+        
+        function updateTooltip(event) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.style.left = (event.pageX + 15) + 'px';
+            tooltip.style.top = (event.pageY - 30) + 'px';
+        }
+        
+        function hideTooltip() {
+            document.getElementById('tooltip').style.display = 'none';
+        }
+        
+        // Zoom controls
+        function zoomIn() {
+            currentZoom = Math.min(currentZoom + 0.2, 3);
+            applyZoom();
+        }
+        
+        function zoomOut() {
+            currentZoom = Math.max(currentZoom - 0.2, 0.5);
+            applyZoom();
+        }
+        
+        function resetZoom() {
+            currentZoom = 1;
+            applyZoom();
+        }
+        
+        function applyZoom() {
+            const svg = document.getElementById('map');
+            if (svg) {
+                svg.style.transform = `scale(${currentZoom})`;
+                svg.style.transformOrigin = 'center center';
+                svg.style.transition = 'transform 0.3s ease';
+            }
+        }
+    </script>
+</body>
+</html>
